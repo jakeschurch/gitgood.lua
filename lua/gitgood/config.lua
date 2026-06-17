@@ -5,6 +5,10 @@ M.defaults = {
   -- Which provider backs the current repo. For now only "github".
   provider = "github",
 
+  -- The `gh` executable. Default resolves on PATH; the Nix package rewrites this
+  -- to an absolute store path so gh travels with the plugin.
+  gh_cmd = "gh",
+
   -- Default base branch for new PRs / when the remote default can't be detected.
   default_branch = "main",
 

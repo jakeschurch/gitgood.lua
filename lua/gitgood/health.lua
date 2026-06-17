@@ -10,16 +10,17 @@ local function check_nvim()
 end
 
 local function check_gh()
-  if vim.fn.executable("gh") ~= 1 then
-    vim.health.error("`gh` CLI not found on PATH", {
+  local gh = require("gitgood.config").get().gh_cmd
+  if vim.fn.executable(gh) ~= 1 then
+    vim.health.error("`gh` CLI not found (" .. gh .. ")", {
       "Install GitHub CLI: https://cli.github.com",
     })
     return
   end
-  vim.health.ok("`gh` CLI found")
+  vim.health.ok("`gh` CLI found (" .. gh .. ")")
 
   -- gh auth status exits non-zero when not logged in.
-  local res = vim.system({ "gh", "auth", "status" }, { text = true }):wait()
+  local res = vim.system({ gh, "auth", "status" }, { text = true }):wait()
   if res.code == 0 then
     vim.health.ok("`gh` authenticated")
   else

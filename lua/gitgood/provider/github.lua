@@ -14,9 +14,14 @@ end
 
 -- ── transport helpers ──────────────────────────────────────────────────────
 
+-- The configured `gh` binary (PATH name, or absolute store path under Nix).
+local function gh_bin()
+  return require("gitgood.config").get().gh_cmd
+end
+
 -- Run `gh <args>`, raise on non-zero, return raw stdout.
 local function gh(args)
-  local cmd = vim.list_extend({ "gh" }, args)
+  local cmd = vim.list_extend({ gh_bin() }, args)
   local res = async.system(cmd)
   if res.code ~= 0 then
     error("gh " .. table.concat(args, " ") .. ": " .. (res.stderr or ("exit " .. res.code)))
@@ -37,7 +42,7 @@ end
 -- `gh api`. If `body` given, send as JSON over stdin (--input -). Returns decoded
 -- JSON (or nil for empty responses).
 local function gh_api(args, body)
-  local cmd = vim.list_extend({ "gh", "api" }, args)
+  local cmd = vim.list_extend({ gh_bin(), "api" }, args)
   local opts = { text = true }
   if body ~= nil then
     cmd = vim.list_extend(cmd, { "--input", "-" })
@@ -424,7 +429,7 @@ function Provider:get_file(path, ref)
   local r = self:repo()
   -- NB: passing -f/-F flips `gh api` to POST; keep ref in the query string so this
   -- stays a GET.
-  local cmd = { "gh", "api", ("repos/%s/contents/%s?ref=%s"):format(r.slug, path, vim.uri_encode(ref)) }
+  local cmd = { gh_bin(), "api", ("repos/%s/contents/%s?ref=%s"):format(r.slug, path, vim.uri_encode(ref)) }
   local res = async.system(cmd)
   if res.code ~= 0 then
     return nil -- 404 (missing at ref) or binary; caller treats as empty
