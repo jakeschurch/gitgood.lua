@@ -62,3 +62,5 @@ All keymaps are overridable via `setup({ keymaps = { ... } })` (see
 The core is transport-blind: it talks to a provider that returns normalized types.
 The GitHub provider picks the best wire per operation — **GraphQL → CLI → REST** —
 all through `gh` so its auth is reused. See `lua/gitgood/provider/`.
+
+<!-- gitgood live round-trip test line -->
