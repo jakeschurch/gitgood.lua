@@ -336,15 +336,13 @@ local function set_keymaps(buf)
   map(km.open_vsplit, function()
     open_diff(buf, "vsplit")
   end, "open diff in vsplit")
-  map(km.expand, function()
-    M.expand(buf)
-  end, "expand file")
-  map(km.toggle_fold, function()
-    toggle_under_cursor(buf)
-  end, "toggle fold")
-  map("za", function()
-    toggle_under_cursor(buf)
-  end, "toggle fold")
+  -- =, <Tab>, za all toggle whatever is under the cursor: a file expands its
+  -- hunks; a section / Desc folds.
+  for _, lhs in ipairs({ km.expand, km.toggle_fold, "za" }) do
+    map(lhs, function()
+      toggle_under_cursor(buf)
+    end, "toggle under cursor")
+  end
   map(km.toggle_viewed, function()
     toggle_viewed(buf)
   end, "toggle viewed")

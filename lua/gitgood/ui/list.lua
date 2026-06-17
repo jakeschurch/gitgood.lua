@@ -63,14 +63,55 @@ local function render(buf, sections)
   end
 end
 
+local function toggle_section(buf)
+  local item = buffer.item_at(buf)
+  if item and item.section then
+    folds[buf] = folds[buf] or {}
+    folds[buf][item.section] = not folds[buf][item.section]
+    local cached = cache.get_list(CACHE_KEY)
+    if cached then
+      render(buf, cached)
+    end
+    return true
+  end
+  return false
+end
+
+local function open_pr(buf, splitcmd)
+  local item = buffer.item_at(buf)
+  if not (item and item.number) then
+    return false
+  end
+  if splitcmd then
+    vim.cmd(splitcmd)
+  end
+  require("gitgood.ui.pr").open(item.number)
+  return true
+end
+
 local function set_keymaps(buf)
   local km = config.get().keymaps.list
+  -- <CR>: open the PR under cursor, or fold the section header under cursor.
   buffer.map(buf, km.open, function()
-    local item = buffer.item_at(buf)
-    if item and item.number then
-      require("gitgood.ui.pr").open(item.number)
+    if not open_pr(buf) then
+      toggle_section(buf)
     end
-  end, "open PR")
+  end, "open PR / fold section")
+  buffer.map(buf, km.open_tab, function()
+    open_pr(buf, "tabnew")
+  end, "open PR in tab")
+  buffer.map(buf, km.open_split, function()
+    open_pr(buf, "split")
+  end, "open PR in split")
+  buffer.map(buf, km.open_vsplit, function()
+    open_pr(buf, "vsplit")
+  end, "open PR in vsplit")
+  -- fold a section: <Tab>, =, za all work on the header line.
+  for _, lhs in ipairs({ km.toggle_fold, "=", "za" }) do
+    buffer.map(buf, lhs, function()
+      toggle_section(buf)
+    end, "fold section")
+  end
   buffer.map(buf, km.refresh, function()
     M.open({ force = true })
   end, "refresh")
@@ -80,20 +121,11 @@ local function set_keymaps(buf)
   buffer.map(buf, km.back, function()
     nav.back()
   end, "back")
-  buffer.map(buf, "<Tab>", function()
-    local item = buffer.item_at(buf)
-    local sec = item and item.section
-    if sec then
-      folds[buf] = folds[buf] or {}
-      folds[buf][sec] = not folds[buf][sec]
-      local cached = cache.get_list(CACHE_KEY)
-      if cached then
-        render(buf, cached)
-      end
-    end
-  end, "toggle fold")
   buffer.map(buf, km.help, function()
-    vim.notify("gitgood dashboard  <CR> open · <Tab> fold · r refresh · cc create", vim.log.levels.INFO)
+    vim.notify(
+      "gitgood dashboard  <CR> open/fold · O tab · o split · gO vsplit · = / <Tab> fold · r refresh · cc create",
+      vim.log.levels.INFO
+    )
   end, "help")
 end
 

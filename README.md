@@ -51,7 +51,8 @@ Run `:checkhealth gitgood` to verify.
 
 ### Keymaps
 
-**Dashboard** — `<CR>` open · `<Tab>` fold section · `r` refresh · `cc` create · `-` back
+**Dashboard** — `<CR>` open PR (or fold a section header) · `O`/`o`/`gO` open in
+tab/split/vsplit · `=`/`<Tab>` fold section · `r` refresh · `cc` create · `-` back
 
 **Review hub** — `<CR>`/`O`/`o`/`gO` open diff (win/tab/split/vsplit) · `=` expand file
 inline · `S` toggle viewed · `]f`/`[f` next/prev file · `za`/`<Tab>` fold · `ca`/`cr`/`cm`

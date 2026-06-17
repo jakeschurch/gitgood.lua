@@ -30,7 +30,11 @@ M.defaults = {
   -- These are intentionally fugitive-flavored: dense, mnemonic, no leader.
   keymaps = {
     list = {
-      open = "<CR>",
+      open = "<CR>", -- open PR (or fold the section under cursor)
+      open_tab = "O",
+      open_split = "o",
+      open_vsplit = "gO",
+      toggle_fold = "<Tab>",
       back = "-",
       refresh = "r",
       create = "cc",
