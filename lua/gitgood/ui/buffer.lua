@@ -54,4 +54,45 @@ function M.map(buf, lhs, fn, desc)
   vim.keymap.set("n", lhs, fn, { buffer = buf, nowait = true, silent = true, desc = desc })
 end
 
+-- Jump to the nearest line (in `dir`) whose item satisfies `pred`. fugitive-style
+-- item navigation; works in any gitgood buffer.
+function M.move(buf, dir, pred)
+  local cur = vim.api.nvim_win_get_cursor(0)[1]
+  local total = vim.api.nvim_buf_line_count(buf)
+  local from, to, step = cur + 1, total, 1
+  if dir < 0 then
+    from, to, step = cur - 1, 1, -1
+  end
+  for ln = from, to, step do
+    local it = M.item_at(buf, ln)
+    if it and pred(it) then
+      vim.api.nvim_win_set_cursor(0, { ln, 0 })
+      return true
+    end
+  end
+  return false
+end
+
+-- Close the gitgood view (fugitive `gq`): collapse extra panes, wipe the buffer.
+function M.close()
+  if #vim.api.nvim_tabpage_list_wins(0) > 1 then
+    pcall(vim.cmd, "only")
+  end
+  pcall(vim.cmd, "bdelete!")
+end
+
+-- Bind the universal fugitive verbs every gitgood buffer shares.
+function M.common_maps(buf, opts)
+  M.map(buf, "q", M.close, "close")
+  M.map(buf, "gq", M.close, "close")
+  if opts and opts.next_pred then
+    M.map(buf, ")", function()
+      M.move(buf, 1, opts.next_pred)
+    end, "next item")
+    M.map(buf, "(", function()
+      M.move(buf, -1, opts.next_pred)
+    end, "prev item")
+  end
+end
+
 return M

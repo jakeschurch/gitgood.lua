@@ -7,6 +7,7 @@ local comments = require("gitgood.comments")
 local diffparse = require("gitgood.diffparse")
 local diffmap = require("gitgood.diffmap")
 local nav = require("gitgood.ui.nav")
+local buffer = require("gitgood.ui.buffer")
 
 local M = {}
 
@@ -74,9 +75,19 @@ local function set_keymaps(buf, ctx)
   map(km.stage, function()
     require("gitgood.review").comment_line(ctx, true, vrange())
   end, "stage to review (range)", "x")
+  map("(", function()
+    comments.prev(ctx.placed)
+  end, "prev comment")
+  map(")", function()
+    comments.next(ctx.placed)
+  end, "next comment")
   map(km.help, function()
-    vim.notify("gitgood diff  c single comment · C stage to review · ]r/[r nav · - back", vim.log.levels.INFO)
+    vim.notify(
+      "gitgood diff  c single · C stage · ]r/[r or ( ) comment · - back · q close",
+      vim.log.levels.INFO
+    )
   end, "help")
+  buffer.common_maps(buf)
 end
 
 -- Build the two diff panes from already-fetched data (synchronous).

@@ -51,6 +51,10 @@ Run `:checkhealth gitgood` to verify.
 
 ### Keymaps
 
+Consistent across every gitgood buffer (fugitive-style): `<CR>` act/open · `o`/`O`/`gO`
+split/tab/vsplit · `=`/`<Tab>` toggle under cursor · `(`/`)` prev/next item · `-` back ·
+`q`/`gq` close · `g?` help. All keys resolve from anywhere within an item.
+
 **Dashboard** — `<CR>` open PR (or fold a section header) · `O`/`o`/`gO` open in
 tab/split/vsplit · `=`/`<Tab>` fold section · `r` refresh · `cc` create · `-` back
 

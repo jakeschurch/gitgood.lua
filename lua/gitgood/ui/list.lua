@@ -123,10 +123,16 @@ local function set_keymaps(buf)
   end, "back")
   buffer.map(buf, km.help, function()
     vim.notify(
-      "gitgood dashboard  <CR> open/fold · O tab · o split · gO vsplit · = / <Tab> fold · r refresh · cc create",
+      "gitgood dashboard  <CR> open/fold · O/o/gO tab/split/vsplit · = / <Tab> fold · "
+        .. "( ) prev/next PR · r refresh · cc create · q close",
       vim.log.levels.INFO
     )
   end, "help")
+  buffer.common_maps(buf, {
+    next_pred = function(it)
+      return it.number ~= nil
+    end,
+  })
 end
 
 -- Open the dashboard as the navigation root. Cache-first unless opts.force.

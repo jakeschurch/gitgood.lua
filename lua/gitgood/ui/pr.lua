@@ -423,13 +423,24 @@ local function set_keymaps(buf)
       end,
     })
   end, "issue comment")
+  map("r", function()
+    M.open(number, true)
+  end, "refresh")
+  map("(", function()
+    move_file(buf, -1)
+  end, "prev file")
+  map(")", function()
+    move_file(buf, 1)
+  end, "next file")
   map(km.help, function()
     vim.notify(
-      "gitgood review  <CR>/O/o/gO open · = expand · S viewed · ]f/[f file · "
-        .. "ca/cr/cm/cs review · ci comment · co checkout · gm merge · gl labels · gv reviewers · - back",
+      "gitgood review  <CR>/O/o/gO open · = expand · S viewed · ]f/[f or ( ) file · "
+        .. "ca/cr/cm/cs review · ci comment · co checkout · gm merge · gl labels · gv reviewers · "
+        .. "r refresh · - back · q close",
       vim.log.levels.INFO
     )
   end, "help")
+  buffer.common_maps(buf)
 end
 
 function M.open(number, force)
