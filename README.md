@@ -59,9 +59,13 @@ split/tab/vsplit · `=`/`<Tab>` toggle under cursor · `(`/`)` prev/next item ·
 tab/split/vsplit · `=`/`<Tab>` fold section · `r` refresh · `cc` create · `-` back
 
 **Review hub** — `<CR>`/`O`/`o`/`gO` open diff (win/tab/split/vsplit) · `=` expand file
-inline · `S` toggle viewed · `]f`/`[f` next/prev file · `za`/`<Tab>` fold · `ca`/`cr`/`cm`
-verdict · `cs` submit · `ci` issue comment · `co` checkout · `gm` merge · `gl` labels ·
-`gv` reviewers · `-` back
+inline · `c` comment a diff line (single) · `C` stage into review · *(visual-select lines
+then `c`/`C` for a multi-line comment)* · `S` toggle viewed · `]f`/`[f` next/prev file ·
+`za`/`<Tab>` fold · `ca`/`cr`/`cm` verdict · `cs` submit · `ci` issue comment · `co`
+checkout · `gm` merge · `gl` labels · `gv` reviewers · `-` back
+
+> In the hub `c`/`C` comment the expanded diff line under the cursor. They wait
+> briefly for the `c`-prefix verbs (`ca`/`cr`/…) before firing.
 
 **Diff** — `c` single comment · `C` stage to review · `]r`/`[r` next/prev comment · `-` back
 

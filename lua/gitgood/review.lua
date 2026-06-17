@@ -82,6 +82,45 @@ function M.comment_line(ctx, staged, range)
   })
 end
 
+-- Comment on a file line / range directly (used by the review hub's inline diff,
+-- where we already know path+line, no buffer→line mapping needed).
+-- opts = { number, path, head_sha, line, start_line?, side?, staged, on_done? }
+function M.comment_inline(opts)
+  local side = opts.side or "RIGHT"
+  compose.open({
+    title = ("comment %s:%s%s%s"):format(
+      opts.path,
+      opts.start_line and (opts.start_line .. "-") or "",
+      opts.line,
+      opts.staged and " [review]" or " [single]"
+    ),
+    on_submit = function(body)
+      local payload = { path = opts.path, line = opts.line, side = side, commit_id = opts.head_sha, body = body }
+      if opts.start_line and opts.start_line ~= opts.line then
+        payload.start_line = opts.start_line
+        payload.start_side = side
+      end
+      if opts.staged then
+        table.insert(bucket(opts.number).comments, payload)
+        vim.notify(("gitgood: staged comment (%d pending)"):format(M.count(opts.number)), vim.log.levels.INFO)
+        if opts.on_done then
+          opts.on_done()
+        end
+      else
+        async.run(function()
+          provider.get():add_comment(opts.number, payload)
+          local th = provider.get():get_threads(opts.number)
+          cache.set(opts.number, { threads = th })
+          vim.notify("gitgood: comment posted", vim.log.levels.INFO)
+          if opts.on_done then
+            opts.on_done()
+          end
+        end)
+      end
+    end,
+  })
+end
+
 -- Submit the pending review for `number` with `event` (APPROVE/REQUEST_CHANGES/
 -- COMMENT). Opens compose for the review body first.
 function M.submit(number, event, on_done)

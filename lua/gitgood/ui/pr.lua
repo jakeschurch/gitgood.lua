@@ -172,8 +172,15 @@ local function render(buf)
   emit_section("unviewed", "Unviewed", unviewed)
   emit_section("viewed", "Viewed", viewed)
 
+  -- Comment affordance: expand a file (=), then c/C on a line (or a visual range).
+  lines[#lines + 1] = " Comment " .. string.rep("─", 33)
+  lines[#lines + 1] = "   c  comment a diff line (single, posts now)"
+  lines[#lines + 1] = "   C  stage a diff line into the pending review"
+  lines[#lines + 1] = "   V-select lines then c / C for a multi-line comment"
+  lines[#lines + 1] = "   ci comment on the PR (top-level) · cs submit review (" .. pending_total .. ")"
+  lines[#lines + 1] = ""
   lines[#lines + 1] =
-    " <CR> diff · O tab · o split · = expand · S viewed · ]f/[f file · ca/cr/cm/cs review · - back"
+    " <CR> diff · O/o/gO open · = expand · S viewed · ( ) file · ca/cr/cm review · - back · q close"
 
   buffer.render(buf, lines)
   for lnum, it in pairs(items) do
@@ -297,6 +304,61 @@ local function toggle_under_cursor(buf)
   end
 end
 
+-- Comment on the diff line(s) under the cursor in an expanded file.
+-- Code lines carry { file, line } items, so we read the file line directly.
+local function comment_here(buf, staged, isvisual)
+  local st = state[buf]
+  if not st.pr then
+    return
+  end
+  local function fileline(bufln)
+    local it = buffer.item_at(buf, bufln)
+    if it and it.file and it.line then
+      return it.line, it.file
+    end
+  end
+  local s_line, e_line, file
+  if isvisual then
+    local a, b = vim.fn.line("v"), vim.fn.line(".")
+    if a > b then
+      a, b = b, a
+    end
+    vim.api.nvim_input("<Esc>")
+    local fls = {}
+    for bl = a, b do
+      local fl, f = fileline(bl)
+      if fl then
+        fls[#fls + 1] = fl
+        file = f
+      end
+    end
+    if #fls == 0 then
+      return vim.notify("gitgood: select code lines inside an expanded file", vim.log.levels.WARN)
+    end
+    s_line, e_line = fls[1], fls[#fls]
+  else
+    local fl, f = fileline(vim.api.nvim_win_get_cursor(0)[1])
+    if not fl then
+      return vim.notify("gitgood: put the cursor on a diff line (expand a file with =)", vim.log.levels.WARN)
+    end
+    s_line, e_line, file = fl, fl, f
+  end
+  require("gitgood.review").comment_inline({
+    number = st.number,
+    path = file.path,
+    head_sha = st.pr.head_sha,
+    line = e_line,
+    start_line = (s_line ~= e_line) and s_line or nil,
+    side = "RIGHT",
+    staged = staged,
+    on_done = function()
+      if vim.api.nvim_buf_is_valid(buf) then
+        render(buf)
+      end
+    end,
+  })
+end
+
 -- Toggle a file's inline hunk+thread expansion.
 function M.expand(buf)
   local it = cursor_item(buf)
@@ -343,6 +405,25 @@ local function set_keymaps(buf)
       toggle_under_cursor(buf)
     end, "toggle under cursor")
   end
+  -- Inline comment from an expanded file. Mapped WITHOUT nowait so the c-prefix
+  -- verbs (ca/cr/cm/cs/ci/co) still resolve; bare c/C fire after them.
+  local function cmap(lhs, mode, fn, desc)
+    if lhs then
+      vim.keymap.set(mode, lhs, fn, { buffer = buf, silent = true, desc = desc })
+    end
+  end
+  cmap(km.comment, "n", function()
+    comment_here(buf, false, false)
+  end, "comment line")
+  cmap(km.stage, "n", function()
+    comment_here(buf, true, false)
+  end, "stage comment")
+  cmap(km.comment, "x", function()
+    comment_here(buf, false, true)
+  end, "comment range")
+  cmap(km.stage, "x", function()
+    comment_here(buf, true, true)
+  end, "stage comment range")
   map(km.toggle_viewed, function()
     toggle_viewed(buf)
   end, "toggle viewed")

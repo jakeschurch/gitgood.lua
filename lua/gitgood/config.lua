@@ -51,6 +51,8 @@ M.defaults = {
       open_tab = "O", -- open diff in a new tab
       open_split = "o", -- open diff in a horizontal split
       open_vsplit = "gO", -- open diff in a vertical split
+      comment = "c", -- single inline comment on the diff line under cursor
+      stage = "C", -- stage an inline comment into the pending review
       expand = "=", -- toggle inline hunks+threads under a file
       toggle_fold = "<Tab>", -- fold/unfold section or file under cursor
       toggle_viewed = "S", -- mark file viewed (GitHub-synced) + jump next
