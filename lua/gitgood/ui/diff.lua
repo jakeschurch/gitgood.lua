@@ -79,8 +79,61 @@ local function set_keymaps(buf, ctx)
   end, "help")
 end
 
+-- Build the two diff panes from already-fetched data (synchronous).
+local function build(number, path, pr, diff, threads, base, head)
+  local parsed = diffparse.parse(diff)
+  local ft = vim.filetype.match({ filename = path }) or ""
+
+  -- head in the current window, base in a left vsplit.
+  local head_buf = scratch(("gitgood://pr/%d/%s [HEAD]"):format(number, path), ft, head)
+  vim.api.nvim_set_current_buf(head_buf)
+  vim.cmd("diffthis")
+  vim.cmd("leftabove vsplit")
+  local base_buf = scratch(("gitgood://pr/%d/%s [BASE]"):format(number, path), ft, base)
+  vim.api.nvim_set_current_buf(base_buf)
+  vim.cmd("diffthis")
+  vim.cmd("wincmd l") -- focus head pane
+
+  comments.render(base_buf, file_threads(threads, path), "LEFT")
+
+  local region = diffmap.new({
+    path = path,
+    side = "RIGHT",
+    commit_id = pr.head_sha,
+    commentable = diffparse.right_lines(parsed[path]),
+  })
+
+  local ctx = { number = number, path = path, buf = head_buf, region = region, placed = {} }
+  function ctx.redraw()
+    if not vim.api.nvim_buf_is_valid(head_buf) then
+      return
+    end
+    local cur = cache.get(number) or {}
+    local published = file_threads(cur.threads or {}, path)
+    local staged = require("gitgood.review").pending_threads(number, path)
+    local all = vim.list_extend(vim.deepcopy(published), staged)
+    ctx.placed = comments.render(head_buf, all, "RIGHT")
+  end
+  ctx.redraw()
+
+  set_keymaps(head_buf, ctx)
+  set_keymaps(base_buf, { number = number, path = path, buf = base_buf, placed = {} })
+end
+
 function M.open(number, path)
   nav.go(function()
+    local entry = cache.get(number) or {}
+    local pr, diff, threads = entry.pr, entry.diff, entry.threads
+    local cb = pr and cache.get_blob(pr.base_ref, path)
+    local ch = pr and cache.get_blob(pr.head_sha, path)
+
+    -- Fully cached: build synchronously, no loading flash.
+    if pr and diff and threads and cb and ch then
+      build(number, path, pr, diff, threads, cb.content, ch.content)
+      return
+    end
+
+    -- Miss: loading buffer, then fetch what's missing.
     local loading = vim.api.nvim_create_buf(false, true)
     vim.api.nvim_buf_set_lines(loading, 0, -1, false, { "gitgood: loading diff " .. path .. "…" })
     vim.bo[loading].bufhidden = "wipe"
@@ -88,53 +141,17 @@ function M.open(number, path)
 
     async.run(function()
       local p = provider.get()
-      local entry = cache.get(number) or {}
-      local pr = entry.pr or p:get_pr(number)
-      local diff = entry.diff or p:get_diff(number)
-      local threads = entry.threads or p:get_threads(number)
+      pr = pr or p:get_pr(number)
+      diff = diff or p:get_diff(number)
+      threads = threads or p:get_threads(number)
       cache.set(number, { pr = pr, diff = diff, threads = threads, head_sha = pr.head_sha })
 
-      local parsed = diffparse.parse(diff)
-      local base = p:get_file(path, pr.base_ref) or ""
-      local head = p:get_file(path, pr.head_sha) or ""
-      local ft = vim.filetype.match({ filename = path }) or ""
+      local base = cb and cb.content or (p:get_file(path, pr.base_ref) or "")
+      local head = ch and ch.content or (p:get_file(path, pr.head_sha) or "")
+      cache.set_blob(pr.base_ref, path, base)
+      cache.set_blob(pr.head_sha, path, head)
 
-      -- Build the two panes: head in the current window, base in a left vsplit.
-      local head_buf = scratch(("gitgood://pr/%d/%s [HEAD]"):format(number, path), ft, head)
-      vim.api.nvim_set_current_buf(head_buf)
-      vim.cmd("diffthis")
-      vim.cmd("leftabove vsplit")
-      local base_buf = scratch(("gitgood://pr/%d/%s [BASE]"):format(number, path), ft, base)
-      vim.api.nvim_set_current_buf(base_buf)
-      vim.cmd("diffthis")
-      vim.cmd("wincmd l") -- focus head pane
-
-      comments.render(base_buf, file_threads(threads, path), "LEFT")
-
-      -- region for posting comments from the head pane (full-file → identity map).
-      local region = diffmap.new({
-        path = path,
-        side = "RIGHT",
-        commit_id = pr.head_sha,
-        commentable = diffparse.right_lines(parsed[path]),
-      })
-
-      local ctx = { number = number, path = path, buf = head_buf, region = region, placed = {} }
-      -- Redraw merges published threads (cache) with locally-staged pending ones.
-      function ctx.redraw()
-        if not vim.api.nvim_buf_is_valid(head_buf) then
-          return
-        end
-        local cur = cache.get(number) or {}
-        local published = file_threads(cur.threads or {}, path)
-        local staged = require("gitgood.review").pending_threads(number, path)
-        local all = vim.list_extend(vim.deepcopy(published), staged)
-        ctx.placed = comments.render(head_buf, all, "RIGHT")
-      end
-      ctx.redraw()
-
-      set_keymaps(head_buf, ctx)
-      set_keymaps(base_buf, { number = number, path = path, buf = base_buf, placed = {} })
+      build(number, path, pr, diff, threads, base, head)
     end)
   end)
 end
