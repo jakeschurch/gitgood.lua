@@ -5,6 +5,9 @@ M.defaults = {
   -- Which provider backs the current repo. For now only "github".
   provider = "github",
 
+  -- Default base branch for new PRs / when the remote default can't be detected.
+  default_branch = "main",
+
   -- How many PRs to fetch in list views.
   list_limit = 30,
 

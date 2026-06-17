@@ -77,13 +77,19 @@ function Provider:repo()
   end
   -- Fast path: explicit GH_REPO override ("[host/]owner/repo"). gh's own
   -- `repo view --json` shells to git and ignores GH_REPO, so resolve it ourselves.
+  local fallback_branch = require("gitgood.config").get().default_branch
   local env = vim.env.GH_REPO
   if env and env ~= "" then
     local parts = vim.split(env, "/", { plain = true })
     local name = table.remove(parts)
     local owner = table.remove(parts)
     if owner and name then
-      self._repo = { owner = owner, name = name, slug = owner .. "/" .. name, default_branch = nil }
+      self._repo = {
+        owner = owner,
+        name = name,
+        slug = owner .. "/" .. name,
+        default_branch = fallback_branch,
+      }
       return self._repo
     end
   end
@@ -92,7 +98,7 @@ function Provider:repo()
     owner = data.owner.login,
     name = data.name,
     slug = data.nameWithOwner,
-    default_branch = data.defaultBranchRef and data.defaultBranchRef.name or "main",
+    default_branch = (data.defaultBranchRef and data.defaultBranchRef.name) or fallback_branch,
   }
   return self._repo
 end
@@ -357,9 +363,7 @@ function Provider:create_pr(opts)
   if opts.body then
     vim.list_extend(args, { "--body", opts.body })
   end
-  if opts.base then
-    vim.list_extend(args, { "--base", opts.base })
-  end
+  vim.list_extend(args, { "--base", opts.base or self:repo().default_branch })
   if opts.draft then
     table.insert(args, "--draft")
   end
