@@ -36,9 +36,9 @@ end
 
 local function set_keymaps(buf, ctx)
   local km = config.get().keymaps.diff
-  local function map(lhs, fn, desc)
+  local function map(lhs, fn, desc, mode)
     if lhs then
-      vim.keymap.set("n", lhs, fn, { buffer = buf, nowait = true, silent = true, desc = desc })
+      vim.keymap.set(mode or "n", lhs, fn, { buffer = buf, nowait = true, silent = true, desc = desc })
     end
   end
   map(km.next_comment, function()
@@ -51,13 +51,29 @@ local function set_keymaps(buf, ctx)
     vim.cmd("only")
     nav.back()
   end, "back")
-  -- Writes land in M4 (review.lua). Stub until then.
+  -- Single comment (c) / stage to review (C).
   map(km.comment, function()
     require("gitgood.review").comment_line(ctx, false)
   end, "single comment")
   map(km.stage, function()
     require("gitgood.review").comment_line(ctx, true)
   end, "stage to review")
+  -- Visual-range variants: comment on selected lines. Capture the selection ends
+  -- before leaving visual mode.
+  local function vrange()
+    local a, b = vim.fn.line("v"), vim.fn.line(".")
+    if a > b then
+      a, b = b, a
+    end
+    vim.api.nvim_input("<Esc>")
+    return { start = a, finish = b }
+  end
+  map(km.comment, function()
+    require("gitgood.review").comment_line(ctx, false, vrange())
+  end, "single comment (range)", "x")
+  map(km.stage, function()
+    require("gitgood.review").comment_line(ctx, true, vrange())
+  end, "stage to review (range)", "x")
 end
 
 function M.open(number, path)
@@ -90,9 +106,7 @@ function M.open(number, path)
       vim.cmd("diffthis")
       vim.cmd("wincmd l") -- focus head pane
 
-      local fts = file_threads(threads, path)
-      local placed = comments.render(head_buf, fts, "RIGHT")
-      comments.render(base_buf, fts, "LEFT")
+      comments.render(base_buf, file_threads(threads, path), "LEFT")
 
       -- region for posting comments from the head pane (full-file → identity map).
       local region = diffmap.new({
@@ -102,7 +116,21 @@ function M.open(number, path)
         commentable = diffparse.right_lines(parsed[path]),
       })
 
-      set_keymaps(head_buf, { number = number, path = path, buf = head_buf, region = region, placed = placed })
+      local ctx = { number = number, path = path, buf = head_buf, region = region, placed = {} }
+      -- Redraw merges published threads (cache) with locally-staged pending ones.
+      function ctx.redraw()
+        if not vim.api.nvim_buf_is_valid(head_buf) then
+          return
+        end
+        local cur = cache.get(number) or {}
+        local published = file_threads(cur.threads or {}, path)
+        local staged = require("gitgood.review").pending_threads(number, path)
+        local all = vim.list_extend(vim.deepcopy(published), staged)
+        ctx.placed = comments.render(head_buf, all, "RIGHT")
+      end
+      ctx.redraw()
+
+      set_keymaps(head_buf, ctx)
       set_keymaps(base_buf, { number = number, path = path, buf = base_buf, placed = {} })
     end)
   end)
