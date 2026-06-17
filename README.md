@@ -36,26 +36,32 @@ Run `:checkhealth gitgood` to verify.
 
 ### Flow
 
-1. `:GitGood` → PR list. `<CR>` drills into a PR; `-` goes back.
-2. In the overview, `<CR>` opens a file's **native two-pane diff**, or `=`
-   expands its hunks **inline**. Existing review threads render as virtual lines.
-3. On a diff line: `c` posts a **single comment** immediately; `C` **stages** it
-   into a pending review (shown with a `○` sign). Works on a visual range too.
-4. Submit the batch: `ca` approve · `cr` request changes · `cm` comment · `cs`
-   pick. Each opens a composer (`<C-c><C-c>` submit, `<C-c><C-k>` abort).
+1. `:GG` (or `:GitGood`) → a **sectioned dashboard**: "Needs my review", "Authored
+   by me", "Assigned to me" (configurable). `<CR>` opens a PR; `<Tab>` folds a
+   section; `r` refreshes. Results are cached — back-navigation is instant.
+2. The PR opens in a **review hub** (fugitive-style): a `key:value` header, then
+   `Unviewed`/`Viewed` file sections with a `Review: k/total` counter. Each file shows
+   `●`/`○` comment-count badges and folds (`=`) to reveal its hunks + inline threads.
+3. `S` marks a file **viewed** — synced to GitHub (same checkbox as the web), moves it
+   to the `Viewed` section, and jumps to the next unviewed file.
+4. Open a file's full diff: `<CR>` current window · `O` new tab · `o` hsplit · `gO`
+   vsplit. On a diff line: `c` single comment now, `C` stage into a review.
+5. Submit: `ca` approve · `cr` request changes · `cm` comment · `cs` pick. Composer:
+   `<C-c><C-c>` submit, `<C-c><C-k>` abort.
 
 ### Keymaps
 
-**List** — `<CR>` open · `-` back · `r` refresh · `cc` create · `g?` help
+**Dashboard** — `<CR>` open · `<Tab>` fold section · `r` refresh · `cc` create · `-` back
 
-**Overview** — `<CR>` open diff · `=` expand · `ca`/`cr`/`cm` approve/request/comment ·
-`cs` submit · `ci` issue comment · `co` checkout · `gm` merge · `gl` labels ·
+**Review hub** — `<CR>`/`O`/`o`/`gO` open diff (win/tab/split/vsplit) · `=` expand file
+inline · `S` toggle viewed · `]f`/`[f` next/prev file · `za`/`<Tab>` fold · `ca`/`cr`/`cm`
+verdict · `cs` submit · `ci` issue comment · `co` checkout · `gm` merge · `gl` labels ·
 `gv` reviewers · `-` back
 
 **Diff** — `c` single comment · `C` stage to review · `]r`/`[r` next/prev comment · `-` back
 
-All keymaps are overridable via `setup({ keymaps = { ... } })` (see
-`lua/gitgood/config.lua`).
+All keymaps + the dashboard `sections` are overridable via
+`setup({ keymaps = …, sections = … })` (see `lua/gitgood/config.lua`).
 
 ## Architecture
 

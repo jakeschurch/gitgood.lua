@@ -5,12 +5,16 @@ if vim.g.loaded_gitgood then
 end
 vim.g.loaded_gitgood = true
 
-vim.api.nvim_create_user_command("GitGood", function(opts)
-  require("gitgood.commands").dispatch(opts)
-end, {
+local opts = {
   nargs = "*",
   desc = "gitgood: review pull requests",
   complete = function(arglead, cmdline, cursorpos)
     return require("gitgood.commands").complete(arglead, cmdline, cursorpos)
   end,
-})
+}
+local function dispatch(o)
+  require("gitgood.commands").dispatch(o)
+end
+
+vim.api.nvim_create_user_command("GitGood", dispatch, opts)
+vim.api.nvim_create_user_command("GG", dispatch, opts) -- alias

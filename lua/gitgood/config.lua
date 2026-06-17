@@ -12,6 +12,14 @@ M.defaults = {
   -- Default base branch for new PRs / when the remote default can't be detected.
   default_branch = "main",
 
+  -- Dashboard sections (the :GG / :GitGood view). Each is a GitHub search query;
+  -- order = display order. Override to taste.
+  sections = {
+    { title = "Needs my review", search = "is:open review-requested:@me" },
+    { title = "Authored by me", search = "is:open author:@me" },
+    { title = "Assigned to me", search = "is:open assignee:@me" },
+  },
+
   -- How many PRs to fetch in list views.
   list_limit = 30,
 
@@ -30,8 +38,15 @@ M.defaults = {
       help = "g?",
     },
     pr = {
-      open = "<CR>",
-      expand = "=",
+      open = "<CR>", -- open native diff in current window
+      open_tab = "O", -- open diff in a new tab
+      open_split = "o", -- open diff in a horizontal split
+      open_vsplit = "gO", -- open diff in a vertical split
+      expand = "=", -- toggle inline hunks+threads under a file
+      toggle_fold = "<Tab>", -- fold/unfold section or file under cursor
+      toggle_viewed = "S", -- mark file viewed (GitHub-synced) + jump next
+      next_file = "]f",
+      prev_file = "[f",
       back = "-",
       approve = "ca",
       request_changes = "cr",

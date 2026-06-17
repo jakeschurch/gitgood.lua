@@ -35,12 +35,15 @@ COMMANDS                                                    *gitgood-commands*
 ==============================================================================
 MAPPINGS                                                    *gitgood-mappings*
 
-List buffer ~
-  <CR>  open PR        -   back        r   refresh
-  cc    create PR      g?  help
+Dashboard buffer ~
+  <CR>  open PR        <Tab> fold section   r   refresh
+  cc    create PR      -    back            g?  help
 
-Overview buffer ~
-  <CR>  open file diff     =   expand hunks inline
+Review hub buffer ~
+  <CR>  open diff (current win)   O   open in new tab
+  o     open in hsplit           gO  open in vsplit
+  =     expand file inline       S   toggle viewed (GitHub-synced)
+  ]f [f next / prev file         za / <Tab>  fold under cursor
   ca    approve           cr   request changes      cm  comment review
   cs    submit review     ci   issue comment        co  checkout branch
   gm    merge             gl   labels               gv  reviewers

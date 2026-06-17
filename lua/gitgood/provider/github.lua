@@ -179,6 +179,9 @@ function Provider:list_prs(opts)
     "additions", "deletions", "reviewDecision", "statusCheckRollup", "updatedAt", "url",
   }, ",")
   local args = { "pr", "list", "--limit", tostring(limit), "--json", fields }
+  if opts.search then
+    vim.list_extend(args, { "--search", opts.search })
+  end
   if opts.state then
     vim.list_extend(args, { "--state", opts.state })
   end
@@ -194,11 +197,12 @@ local PR_QUERY = [[
 query($owner:String!,$name:String!,$number:Int!){
   repository(owner:$owner,name:$name){
     pullRequest(number:$number){
+      id
       number title body state isDraft url additions deletions
       author{login}
       baseRefName headRefName headRefOid
       labels(first:30){nodes{name}}
-      files(first:100){nodes{path additions deletions changeType}}
+      files(first:100){nodes{path additions deletions changeType viewerViewedState}}
       reviewRequests(first:30){nodes{requestedReviewer{
         __typename ... on User{login} ... on Team{name}}}}
       latestOpinionatedReviews(first:30){nodes{author{login} state}}
@@ -223,6 +227,7 @@ function Provider:get_pr(number)
       status = STATUS_MAP[f.changeType] or "M",
       additions = f.additions,
       deletions = f.deletions,
+      viewed = f.viewerViewedState == "VIEWED",
     })
   end
 
@@ -253,6 +258,7 @@ function Provider:get_pr(number)
   end
 
   return {
+    node_id = pr.id,
     number = pr.number,
     title = pr.title,
     body = pr.body,
@@ -421,6 +427,24 @@ end
 -- Convenience used by ui.pr checkout map.
 function Provider:checkout(number)
   return gh({ "pr", "checkout", tostring(number) })
+end
+
+-- Viewed-file state (GitHub-synced — same checkbox as the web UI).
+local MARK_VIEWED = [[
+mutation($id:ID!,$path:String!){
+  markFileAsViewed(input:{pullRequestId:$id,path:$path}){ clientMutationId }
+}]]
+local UNMARK_VIEWED = [[
+mutation($id:ID!,$path:String!){
+  unmarkFileAsViewed(input:{pullRequestId:$id,path:$path}){ clientMutationId }
+}]]
+
+function Provider:mark_viewed(node_id, path)
+  return gh_graphql(MARK_VIEWED, { id = node_id, path = path })
+end
+
+function Provider:unmark_viewed(node_id, path)
+  return gh_graphql(UNMARK_VIEWED, { id = node_id, path = path })
 end
 
 -- File contents at a ref (branch or sha). Returns content string, or nil if the

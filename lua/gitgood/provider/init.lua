@@ -20,6 +20,8 @@ M.CONTRACT = {
   "merge_pr", -- (number, opts)
   "set_labels", -- (number, {add=?, remove=?})
   "set_reviewers", -- (number, {add=?, remove=?})
+  "mark_viewed", -- (pr_node_id, path) GitHub-synced viewed state
+  "unmark_viewed", -- (pr_node_id, path)
 }
 
 function M.register(name, factory)

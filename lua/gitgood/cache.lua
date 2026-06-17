@@ -2,7 +2,24 @@
 local M = {}
 
 local prs = {} -- number -> { pr=?, diff=?, threads=?, head_sha=?, fetched_at=? }
+local lists = {} -- key -> arbitrary list payload (e.g. dashboard sections)
 local inflight = {} -- key -> true (guards against double-fetch)
+
+-- List/dashboard cache (cache-first rendering; `r` busts).
+function M.get_list(key)
+  return lists[key]
+end
+function M.set_list(key, payload)
+  lists[key] = payload
+  return payload
+end
+function M.bust_list(key)
+  if key then
+    lists[key] = nil
+  else
+    lists = {}
+  end
+end
 
 function M.get(number)
   return prs[number]
