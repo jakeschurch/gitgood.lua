@@ -418,4 +418,23 @@ function Provider:checkout(number)
   return gh({ "pr", "checkout", tostring(number) })
 end
 
+-- File contents at a ref (branch or sha). Returns content string, or nil if the
+-- file does not exist at that ref (e.g. added/deleted files).
+function Provider:get_file(path, ref)
+  local r = self:repo()
+  -- NB: passing -f/-F flips `gh api` to POST; keep ref in the query string so this
+  -- stays a GET.
+  local cmd = { "gh", "api", ("repos/%s/contents/%s?ref=%s"):format(r.slug, path, vim.uri_encode(ref)) }
+  local res = async.system(cmd)
+  if res.code ~= 0 then
+    return nil -- 404 (missing at ref) or binary; caller treats as empty
+  end
+  local data = json_decode(res.stdout)
+  if not data or not data.content then
+    return nil
+  end
+  local b64 = (data.content:gsub("%s", ""))
+  return vim.base64.decode(b64)
+end
+
 return M
