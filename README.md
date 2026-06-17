@@ -46,8 +46,9 @@ Run `:checkhealth gitgood` to verify.
    to the `Viewed` section, and jumps to the next unviewed file.
 4. Open a file's full diff: `<CR>` current window · `O` new tab · `o` hsplit · `gO`
    vsplit. On a diff line: `c` single comment now, `C` stage into a review.
-5. Submit: `ca` approve · `cr` request changes · `cm` comment · `cs` pick. Composer:
-   `<C-c><C-c>` submit, `<C-c><C-k>` abort.
+5. Submit: `ca` approve · `cr` request changes · `cm` comment · `cs` pick. The composer
+   is a real buffer (fugitive-style): `:w` / `ZZ` / `:wq` submit, `:q!` aborts
+   (`<C-c><C-c>` / `<C-c><C-k>` also work).
 
 ### Keymaps
 

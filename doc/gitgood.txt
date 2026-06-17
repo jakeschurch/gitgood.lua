@@ -55,8 +55,9 @@ Diff buffer ~
   ]r [r next / prev comment      -   back
   (c and C also work on a visual range)
 
-Composer buffer ~
-  <C-c><C-c>  submit        <C-c><C-k>  abort
+Composer buffer ~  (a real writable buffer, fugitive-style)
+  :w / ZZ / :wq  submit     :q!  abort
+  <C-c><C-c>     submit     <C-c><C-k>  abort
 
 ==============================================================================
 PROVIDERS                                                  *gitgood-providers*
