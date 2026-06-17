@@ -211,6 +211,13 @@ local function set_keymaps(buf, number)
       end,
     })
   end, "issue comment")
+  buffer.map(buf, km.help, function()
+    vim.notify(
+      "gitgood PR  <CR> diff · = expand · ca/cr/cm verdict · cs submit · ci comment"
+        .. " · co checkout · gm merge · gl labels · gv reviewers · - back",
+      vim.log.levels.INFO
+    )
+  end, "help")
 end
 
 function M.open(number, force)
@@ -228,7 +235,7 @@ function M.open(number, force)
     set_keymaps(buf, number)
     async.run(function()
       local cached = not force and cache.get(number)
-      local pr = cached and cached.pr
+      local pr = cached and cached.pr or nil
       if not pr then
         pr = provider.get():get_pr(number)
         cache.set(number, { pr = pr, head_sha = pr.head_sha })

@@ -1,0 +1,67 @@
+*gitgood.txt*  Review pull requests in Neovim, fugitive-style
+
+==============================================================================
+INTRODUCTION                                                         *gitgood*
+
+gitgood.lua reviews pull requests with a vim-fugitive feel: dedicated buffers,
+dense mnemonic keymaps, drill-in/back navigation, native diff, and inline
+review comments. All operations are async. GitHub is the default provider; a
+thin provider interface keeps other forges a drop-in away.
+
+Requirements:
+  - Neovim 0.10+ (uses |vim.system()|)
+  - gh CLI, authenticated.  Verify with: >
+      :checkhealth gitgood
+<
+==============================================================================
+SETUP                                                          *gitgood-setup*
+>
+    require("gitgood").setup({
+      provider = "github",
+      default_branch = "main",
+      list_limit = 30,
+      -- keymaps = { ... }  -- see lua/gitgood/config.lua
+    })
+<
+==============================================================================
+COMMANDS                                                    *gitgood-commands*
+
+                                                                    *:GitGood*
+:GitGood [prs]      Open the PR list (the navigation root).
+:GitGood pr {n}     Open the overview for PR {n}.
+:GitGood create     Create a PR (title prompt + body composer).
+:GitGood submit     Submit the pending review; pick a verdict.
+
+==============================================================================
+MAPPINGS                                                    *gitgood-mappings*
+
+List buffer ~
+  <CR>  open PR        -   back        r   refresh
+  cc    create PR      g?  help
+
+Overview buffer ~
+  <CR>  open file diff     =   expand hunks inline
+  ca    approve           cr   request changes      cm  comment review
+  cs    submit review     ci   issue comment        co  checkout branch
+  gm    merge             gl   labels               gv  reviewers
+  -     back
+
+Diff buffer ~
+  c     single comment (posts immediately)
+  C     stage comment into the pending review
+  ]r [r next / prev comment      -   back
+  (c and C also work on a visual range)
+
+Composer buffer ~
+  <C-c><C-c>  submit        <C-c><C-k>  abort
+
+==============================================================================
+PROVIDERS                                                  *gitgood-providers*
+
+The core never calls gh/REST directly — it uses a provider that returns
+normalized types (see |lua/gitgood/model.lua|). The GitHub provider chooses the
+best transport per operation: GraphQL > CLI > REST, all via `gh` so its auth
+token is reused. Register a new provider with: >
+    require("gitgood.provider").register(name, factory)
+<
+ vim:tw=78:ts=8:ft=help:norl:

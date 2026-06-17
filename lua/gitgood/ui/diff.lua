@@ -74,6 +74,9 @@ local function set_keymaps(buf, ctx)
   map(km.stage, function()
     require("gitgood.review").comment_line(ctx, true, vrange())
   end, "stage to review (range)", "x")
+  map(km.help, function()
+    vim.notify("gitgood diff  c single comment · C stage to review · ]r/[r nav · - back", vim.log.levels.INFO)
+  end, "help")
 end
 
 function M.open(number, path)
