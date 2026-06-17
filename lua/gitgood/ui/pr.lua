@@ -52,11 +52,15 @@ local function threads_for(threads, path)
 end
 
 -- Emit one file's hunks (+ inline threads) as real buffer lines.
-local function emit_file_diff(lines, st, file)
+-- Append a file's hunks (+ inline threads). EVERY emitted line is tagged in `items`
+-- with the owning file, so =/S/O/o/gO/<CR> work anywhere inside the file's block
+-- (not just the file row). Code lines also carry their RIGHT-side `line`.
+local function emit_file_diff(lines, items, st, file)
   local parsed = st.parsed or {}
   local fdiff = parsed[file.path]
   if not fdiff then
     lines[#lines + 1] = "       (loading diff…)"
+    items[#lines] = { file = file }
     return
   end
   local published = threads_for(st.threads, file.path)
@@ -67,6 +71,7 @@ local function emit_file_diff(lines, st, file)
         for _, c in ipairs(t.comments) do
           local first = (vim.split(c.body or "", "\n", { plain = true }))[1] or ""
           lines[#lines + 1] = ("       ┊ ● %s: %s"):format(c.author, first)
+          items[#lines] = { file = file, line = L }
         end
       end
     end
@@ -75,13 +80,16 @@ local function emit_file_diff(lines, st, file)
         local c = t.comments[1] or {}
         local first = (vim.split(c.body or "", "\n", { plain = true }))[1] or ""
         lines[#lines + 1] = ("       ┊ ○ you: %s"):format(first)
+        items[#lines] = { file = file, line = L }
       end
     end
   end
   for _, h in ipairs(fdiff.hunks) do
     lines[#lines + 1] = ("     @@ -%d +%d @@"):format(h.old_start, h.new_start)
+    items[#lines] = { file = file }
     for _, l in ipairs(h.lines) do
       lines[#lines + 1] = ("     %s %s"):format(l.sign, l.text)
+      items[#lines] = { file = file, line = l.new }
       if l.new and l.sign ~= "-" then
         emit_threads_at(l.new)
       end
@@ -155,7 +163,7 @@ local function render(buf)
         items[#lines] = { file = f }
         st.file_lines[#st.file_lines + 1] = #lines
         if st.file_expanded[f.path] then
-          emit_file_diff(lines, st, f)
+          emit_file_diff(lines, items, st, f)
         end
       end
     end
@@ -340,6 +348,9 @@ local function set_keymaps(buf)
   map(km.toggle_viewed, function()
     toggle_viewed(buf)
   end, "toggle viewed")
+  map("s", function() -- lowercase alias (fugitive muscle memory)
+    toggle_viewed(buf)
+  end, "toggle viewed")
   map(km.next_file, function()
     move_file(buf, 1)
   end, "next file")
@@ -426,7 +437,6 @@ end
 function M.open(number, force)
   nav.go(function()
     local buf = buffer.open("gitgood://pr/" .. number, "gitgood-pr")
-    buffer.render(buf, { "gitgood: loading PR #" .. number .. "…" })
     state[buf] = {
       number = number,
       section_fold = { unviewed = false, viewed = true }, -- viewed collapsed by default
@@ -442,16 +452,26 @@ function M.open(number, force)
       end,
     })
     set_keymaps(buf)
+
+    -- Cache hit: render synchronously, no loading flash (instant on back-nav).
+    local entry = not force and cache.get(number)
+    if entry and entry.pr and entry.threads then
+      state[buf].pr = entry.pr
+      state[buf].threads = entry.threads
+      render(buf)
+      return
+    end
+
+    -- Cache miss: show loading once, then fetch.
+    buffer.render(buf, { "gitgood: loading PR #" .. number .. "…" })
     async.run(function()
       local p = provider.get()
-      local entry = not force and cache.get(number) or {}
-      local pr = entry.pr
-      if not pr then
-        pr = p:get_pr(number)
-      end
-      -- threads needed for badges; load alongside pr
-      local threads = entry.threads or p:get_threads(number)
+      local pr = (entry and entry.pr) or p:get_pr(number)
+      local threads = (entry and entry.threads) or p:get_threads(number)
       cache.set(number, { pr = pr, threads = threads, head_sha = pr.head_sha })
+      if not vim.api.nvim_buf_is_valid(buf) then
+        return
+      end
       state[buf].pr = pr
       state[buf].threads = threads
       render(buf)
