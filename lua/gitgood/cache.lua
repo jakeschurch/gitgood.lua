@@ -5,18 +5,49 @@ local prs = {} -- number -> { pr=?, diff=?, threads=?, head_sha=?, fetched_at=? 
 local lists = {} -- key -> arbitrary list payload (e.g. dashboard sections)
 local inflight = {} -- key -> true (guards against double-fetch)
 
--- File-blob cache keyed by ref+path (refs are immutable: a sha, or a branch we
--- treat as stable for the session). Wrapped so a cached empty file ("") is
--- distinguishable from a miss (nil).
+-- File-blob cache keyed by ref+path. Callers pass immutable commit shas, so a key
+-- always maps to one exact file version → safe to persist. Wrapped so a cached
+-- empty file ("") is distinguishable from a miss (nil). Optionally disk-backed.
 local blobs = {}
 local function blob_key(ref, path)
   return tostring(ref) .. "\0" .. path
 end
-function M.get_blob(ref, path)
-  return blobs[blob_key(ref, path)] -- { content = ... } or nil
+
+local function disk_enabled()
+  return require("gitgood.config").get().cache.disk == true
 end
+local function disk_dir()
+  return vim.fn.stdpath("cache") .. "/gitgood/blobs"
+end
+local function disk_path(ref, path)
+  return disk_dir() .. "/" .. vim.fn.sha256(blob_key(ref, path))
+end
+
+function M.get_blob(ref, path)
+  local key = blob_key(ref, path)
+  local mem = blobs[key]
+  if mem then
+    return mem
+  end
+  if disk_enabled() then
+    local fp = disk_path(ref, path)
+    if vim.fn.filereadable(fp) == 1 then
+      local content = table.concat(vim.fn.readfile(fp, "b"), "\n")
+      blobs[key] = { content = content } -- promote to memory
+      return blobs[key]
+    end
+  end
+  return nil
+end
+
 function M.set_blob(ref, path, content)
   blobs[blob_key(ref, path)] = { content = content }
+  if disk_enabled() then
+    pcall(function()
+      vim.fn.mkdir(disk_dir(), "p")
+      vim.fn.writefile(vim.split(content, "\n", { plain = true }), disk_path(ref, path), "b")
+    end)
+  end
 end
 
 -- List/dashboard cache (cache-first rendering; `r` busts).

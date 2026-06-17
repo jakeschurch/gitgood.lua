@@ -12,6 +12,11 @@ M.defaults = {
   -- Default base branch for new PRs / when the remote default can't be detected.
   default_branch = "main",
 
+  -- Caching. `disk` persists sha-keyed file blobs under stdpath("cache")/gitgood
+  -- so diffs open instantly on a cold start. PR/thread data stays in-memory
+  -- (it's mutable). Blobs are keyed by immutable commit shas → never stale.
+  cache = { disk = false },
+
   -- Dashboard sections (the :GG / :GitGood view). Each is a GitHub search query;
   -- order = display order. Override to taste.
   sections = {

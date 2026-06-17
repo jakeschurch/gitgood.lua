@@ -135,7 +135,9 @@ function M.open(number, path)
   nav.go(function()
     local entry = cache.get(number) or {}
     local pr, diff, threads = entry.pr, entry.diff, entry.threads
-    local cb = pr and cache.get_blob(pr.base_ref, path)
+    -- key blobs by immutable shas so the disk cache never goes stale
+    local base_ref = pr and (pr.base_sha or pr.base_ref)
+    local cb = pr and cache.get_blob(base_ref, path)
     local ch = pr and cache.get_blob(pr.head_sha, path)
 
     -- Fully cached: build synchronously, no loading flash.
@@ -157,9 +159,10 @@ function M.open(number, path)
       threads = threads or p:get_threads(number)
       cache.set(number, { pr = pr, diff = diff, threads = threads, head_sha = pr.head_sha })
 
-      local base = cb and cb.content or (p:get_file(path, pr.base_ref) or "")
+      local bref = pr.base_sha or pr.base_ref
+      local base = cb and cb.content or (p:get_file(path, bref) or "")
       local head = ch and ch.content or (p:get_file(path, pr.head_sha) or "")
-      cache.set_blob(pr.base_ref, path, base)
+      cache.set_blob(bref, path, base)
       cache.set_blob(pr.head_sha, path, head)
 
       build(number, path, pr, diff, threads, base, head)

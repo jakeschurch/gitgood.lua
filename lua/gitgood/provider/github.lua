@@ -200,7 +200,7 @@ query($owner:String!,$name:String!,$number:Int!){
       id
       number title body state isDraft url additions deletions
       author{login}
-      baseRefName headRefName headRefOid
+      baseRefName headRefName headRefOid baseRefOid
       labels(first:30){nodes{name}}
       files(first:100){nodes{path additions deletions changeType viewerViewedState}}
       reviewRequests(first:30){nodes{requestedReviewer{
@@ -268,6 +268,7 @@ function Provider:get_pr(number)
     base_ref = pr.baseRefName,
     head_ref = pr.headRefName,
     head_sha = pr.headRefOid,
+    base_sha = pr.baseRefOid,
     additions = pr.additions,
     deletions = pr.deletions,
     url = pr.url,
