@@ -33,6 +33,7 @@ M.defaults = {
       request_changes = "cr",
       comment_review = "cm",
       submit = "cs",
+      issue_comment = "ci",
       checkout = "co",
       merge = "gm",
       labels = "gl",

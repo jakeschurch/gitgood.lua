@@ -109,12 +109,6 @@ local function render(buf)
   end
 end
 
-local function soon(feature)
-  return function()
-    vim.notify("gitgood: " .. feature .. " — coming in a later milestone", vim.log.levels.INFO)
-  end
-end
-
 -- Ensure diff + threads are loaded, then re-render (used by `=`).
 local function ensure_diff_and_render(buf, number)
   async.run(function()
@@ -168,9 +162,55 @@ local function set_keymaps(buf, number)
   buffer.map(buf, km.submit, function()
     require("gitgood.review").submit_current()
   end, "submit")
-  buffer.map(buf, km.merge, soon("merge"), "merge")
-  buffer.map(buf, km.labels, soon("labels"), "labels")
-  buffer.map(buf, km.reviewers, soon("reviewers"), "reviewers")
+
+  local function run_then_refresh(action, done_msg)
+    async.run(function()
+      action(provider.get())
+      vim.notify("gitgood: " .. done_msg, vim.log.levels.INFO)
+      M.open(number, true)
+    end)
+  end
+
+  buffer.map(buf, km.merge, function()
+    vim.ui.select({ "merge", "squash", "rebase" }, { prompt = "Merge method:" }, function(method)
+      if method then
+        run_then_refresh(function(p)
+          p:merge_pr(number, { method = method })
+        end, "PR #" .. number .. " merged (" .. method .. ")")
+      end
+    end)
+  end, "merge")
+
+  buffer.map(buf, km.labels, function()
+    vim.ui.input({ prompt = "Add labels (comma-separated): " }, function(s)
+      if s and s ~= "" then
+        run_then_refresh(function(p)
+          p:set_labels(number, { add = vim.split(s, ",", { trimempty = true }) })
+        end, "labels updated")
+      end
+    end)
+  end, "labels")
+
+  buffer.map(buf, km.reviewers, function()
+    vim.ui.input({ prompt = "Add reviewers (comma-separated): " }, function(s)
+      if s and s ~= "" then
+        run_then_refresh(function(p)
+          p:set_reviewers(number, { add = vim.split(s, ",", { trimempty = true }) })
+        end, "reviewers updated")
+      end
+    end)
+  end, "reviewers")
+
+  buffer.map(buf, km.issue_comment, function()
+    require("gitgood.ui.compose").open({
+      title = "comment on #" .. number,
+      on_submit = function(body)
+        run_then_refresh(function(p)
+          p:add_issue_comment(number, body)
+        end, "comment posted")
+      end,
+    })
+  end, "issue comment")
 end
 
 function M.open(number, force)
@@ -200,7 +240,22 @@ function M.open(number, force)
 end
 
 function M.create()
-  soon("create PR")()
+  vim.ui.input({ prompt = "PR title: " }, function(title)
+    if not title or title == "" then
+      return
+    end
+    require("gitgood.ui.compose").open({
+      title = "PR body — " .. title,
+      allow_empty = true,
+      on_submit = function(body)
+        async.run(function()
+          local out = provider.get():create_pr({ title = title, body = body })
+          vim.notify("gitgood: " .. vim.trim(out or "PR created"), vim.log.levels.INFO)
+          require("gitgood.ui.list").open()
+        end)
+      end,
+    })
+  end)
 end
 
 return M
