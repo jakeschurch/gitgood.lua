@@ -28,9 +28,13 @@ Run `:checkhealth gitgood` to verify.
 
 ## Gitea / Forgejo
 
+The provider is auto-detected from the `origin` remote (`provider = "auto"`, the
+default): `github.com` → GitHub; a host that answers `/api/v1/version` → Gitea;
+anything else → GitHub. Force it with `provider = "gitea"` / `"github"`.
+
 ```lua
 require("gitgood").setup({
-  provider = "gitea", -- or "forgejo"
+  provider = "gitea", -- optional; "auto" by default
   gitea = {
     -- url   = "https://git.example.com", -- default: derived from the `origin` remote
     -- token = "...",                     -- default: $GITEA_TOKEN

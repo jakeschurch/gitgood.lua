@@ -5,7 +5,8 @@ INTRODUCTION                                                         *gitgood*
 
 gitgood.lua reviews pull requests with a vim-fugitive feel: dedicated buffers,
 dense mnemonic keymaps, drill-in/back navigation, native diff, and inline
-review comments. All operations are async. GitHub is the default provider; a
+review comments. All operations are async. The provider is auto-detected from the
+`origin` remote (see |gitgood-providers|); a
 thin provider interface keeps other forges a drop-in away.
 
 Requirements:
@@ -17,7 +18,7 @@ Requirements:
 SETUP                                                          *gitgood-setup*
 >
     require("gitgood").setup({
-      provider = "github",
+      provider = "auto", -- "auto" | "github" | "gitea" | "forgejo"
       default_branch = "main",
       list_limit = 30,
       -- keymaps = { ... }  -- see lua/gitgood/config.lua
@@ -65,7 +66,8 @@ PROVIDERS                                                  *gitgood-providers*
 The core never calls gh/REST directly — it uses a provider that returns
 normalized types (see |lua/gitgood/model.lua|). The GitHub provider chooses the
 best transport per operation: GraphQL > CLI > REST, all via `gh` so its auth
-token is reused. The Gitea provider ("gitea" / "forgejo") speaks REST through
+token is reused. `provider = "auto"` picks per repo: github.com -> github, a host
+answering /api/v1/version -> gitea, else github. The Gitea provider ("gitea" / "forgejo") speaks REST through
 `curl`, with a token from `gitea.token` or $GITEA_TOKEN; the URL comes from
 `gitea.url` or the `origin` remote. Viewed state is session-local there, and
 multi-line comments collapse to their last line. Register a new provider with: >

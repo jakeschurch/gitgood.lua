@@ -80,7 +80,8 @@ end
 function M.check()
   vim.health.start("gitgood")
   check_nvim()
-  local provider = require("gitgood.config").get().provider
+  local provider = require("gitgood.provider").resolve_name()
+  vim.health.info("provider: " .. provider)
   if provider == "gitea" or provider == "forgejo" then
     check_gitea()
   else

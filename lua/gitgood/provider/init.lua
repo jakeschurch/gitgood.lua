@@ -37,9 +37,74 @@ function M.validate(provider)
   return provider
 end
 
--- Resolve a provider instance. Defaults to config.provider.
-function M.get(name)
+local detected = {} -- cwd -> provider name
+
+-- Pick a provider from the `origin` remote. Synchronous (a short curl probe at
+-- most, once per repo) so it's safe to call from or outside a coroutine.
+--   github.com                      -> github
+--   host == config.gitea.url's host -> gitea
+--   host answers GET /api/v1/version -> gitea (Gitea and Forgejo both do)
+--   anything else (GHE, no answer)  -> github
+function M.detect()
+  local cwd = vim.uv.cwd()
+  if detected[cwd] then
+    return detected[cwd]
+  end
+  local cfg = require("gitgood.config").get()
+  local gitea = require("gitgood.provider.gitea")
+  local name = "github"
+
+  local url
+  local res = vim.system({ "git", "remote", "get-url", "origin" }, { text = true }):wait()
+  if res.code ~= 0 then
+    local remotes = vim.system({ "git", "remote" }, { text = true }):wait()
+    local first = remotes.code == 0 and (remotes.stdout or ""):match("[^\n]+")
+    if first then
+      res = vim.system({ "git", "remote", "get-url", first }, { text = true }):wait()
+    end
+  end
+  if res.code == 0 then
+    url = vim.trim(res.stdout or "")
+  end
+  local remote = gitea._parse_remote(url)
+
+  if remote and remote.host ~= "github.com" then
+    local base = remote.scheme .. "://" .. remote.host
+    local cfg_url = cfg.gitea.url
+    if cfg_url and cfg_url ~= "" then
+      local cfg_host = cfg_url:match("^%a[%w+.-]*://([^/]+)")
+      if cfg_host == remote.host then
+        name = "gitea"
+      end
+      base = cfg_url:gsub("/+$", "")
+    end
+    if name ~= "gitea" then
+      local probe = vim.system({ cfg.gitea.curl_cmd, "-sS", "-m", "3", base .. "/api/v1/version" }, { text = true }):wait()
+      if probe.code == 0 then
+        local ok, data = pcall(vim.json.decode, probe.stdout or "")
+        if ok and type(data) == "table" and type(data.version) == "string" then
+          name = "gitea"
+        end
+      end
+    end
+  end
+
+  detected[cwd] = name
+  return name
+end
+
+-- Provider name for this repo: config.provider, with "auto" resolved by detect().
+function M.resolve_name(name)
   name = name or require("gitgood.config").get().provider
+  if name == "auto" then
+    return M.detect()
+  end
+  return name
+end
+
+-- Resolve a provider instance. Defaults to config.provider ("auto" detects).
+function M.get(name)
+  name = M.resolve_name(name)
   local factory = registry[name]
   if not factory then
     error("gitgood: no provider registered named '" .. tostring(name) .. "'")

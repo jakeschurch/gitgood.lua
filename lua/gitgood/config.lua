@@ -2,8 +2,10 @@
 local M = {}
 
 M.defaults = {
-  -- Which provider backs the current repo: "github" | "gitea" ("forgejo" is an alias).
-  provider = "github",
+  -- Which provider backs the current repo: "auto" | "github" | "gitea" ("forgejo"
+  -- is an alias). "auto" reads the `origin` remote: github.com -> github, a host
+  -- that answers Gitea's /api/v1/version -> gitea, anything else -> github.
+  provider = "auto",
 
   -- The `gh` executable. Default resolves on PATH; the Nix package rewrites this
   -- to an absolute store path so gh travels with the plugin.
