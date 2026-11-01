@@ -2,13 +2,14 @@
 
 A Neovim plugin for reviewing pull requests, with a **vim-fugitive** feel:
 dedicated buffers, dense mnemonic keymaps, drill-in/back navigation, native diff,
-and inline review comments — all async. GitHub today; a thin provider interface
-keeps GitLab and others a drop-in away.
+and inline review comments — all async. GitHub and Gitea/Forgejo today; a thin
+provider interface keeps GitLab and others a drop-in away.
 
 ## Requirements
 
 - Neovim **0.10+** (uses `vim.system`)
-- [`gh`](https://cli.github.com) CLI, authenticated (`gh auth login`)
+- GitHub: [`gh`](https://cli.github.com) CLI, authenticated (`gh auth login`)
+- Gitea / Forgejo: `curl` + an API token (see below)
 
 Run `:checkhealth gitgood` to verify.
 
@@ -24,6 +25,23 @@ Run `:checkhealth gitgood` to verify.
   end,
 }
 ```
+
+## Gitea / Forgejo
+
+```lua
+require("gitgood").setup({
+  provider = "gitea", -- or "forgejo"
+  gitea = {
+    -- url   = "https://git.example.com", -- default: derived from the `origin` remote
+    -- token = "...",                     -- default: $GITEA_TOKEN
+  },
+})
+```
+
+Gaps vs GitHub (the API doesn't offer them): viewed-file state is session-local,
+multi-line comments collapse to their last line, and threads render on the new-file
+side. Dashboard sections use GitHub search syntax; `is:`, `author:@me`,
+`assignee:@me`, `review-requested:@me` are translated, other qualifiers ignored.
 
 ## Usage
 

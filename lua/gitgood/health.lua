@@ -31,10 +31,61 @@ local function check_gh()
   end
 end
 
+local function check_gitea()
+  local cfg = require("gitgood.config").get()
+  local curl = cfg.gitea.curl_cmd
+  if vim.fn.executable(curl) ~= 1 then
+    vim.health.error("`curl` not found (" .. curl .. ")", { "Install curl, or set gitea.curl_cmd" })
+    return
+  end
+  vim.health.ok("`curl` found (" .. curl .. ")")
+
+  local tok = cfg.gitea.token
+  if (not tok or tok == "") and (not vim.env.GITEA_TOKEN or vim.env.GITEA_TOKEN == "") then
+    vim.health.warn("no Gitea token", {
+      "Set gitea.token in setup(), or export GITEA_TOKEN",
+      "Create one under Settings > Applications on your Gitea instance",
+      "Public repos can be read without one; writes need it",
+    })
+  else
+    vim.health.ok("Gitea token set")
+  end
+
+  -- Resolve the instance and ping /version through the provider's own transport.
+  local async = require("gitgood.async")
+  local done, ok, msg = false, false, nil
+  async.run(function()
+    local gitea = require("gitgood.provider.gitea")
+    local good, err = pcall(function()
+      local p = gitea.new()
+      local r = p:repo()
+      msg = ("%s (Gitea %s)"):format(r.slug, p:version() or "?")
+    end)
+    ok, msg, done = good, good and msg or tostring(err), true
+  end, function(e)
+    ok, msg, done = false, tostring(e), true
+  end)
+  vim.wait(10000, function()
+    return done
+  end, 50)
+  if not done then
+    vim.health.error("timed out reaching the Gitea instance")
+  elseif ok then
+    vim.health.ok("Gitea repo resolved: " .. msg)
+  else
+    vim.health.error("could not resolve Gitea repo", { msg })
+  end
+end
+
 function M.check()
   vim.health.start("gitgood")
   check_nvim()
-  check_gh()
+  local provider = require("gitgood.config").get().provider
+  if provider == "gitea" or provider == "forgejo" then
+    check_gitea()
+  else
+    check_gh()
+  end
 end
 
 return M
