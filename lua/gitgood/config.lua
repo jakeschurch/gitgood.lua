@@ -2,12 +2,18 @@
 local M = {}
 
 M.defaults = {
-  -- Which provider backs the current repo. For now only "github".
+  -- Which provider backs the current repo: "github" | "gitea" ("forgejo" is an alias).
   provider = "github",
 
   -- The `gh` executable. Default resolves on PATH; the Nix package rewrites this
   -- to an absolute store path so gh travels with the plugin.
   gh_cmd = "gh",
+
+  -- Gitea/Forgejo settings (provider = "gitea"). `url` is the web root, e.g.
+  -- "https://git.example.com"; unset, it's derived from the `origin` remote.
+  -- `token` falls back to $GITEA_TOKEN. Needs repo read/write scope (and issue
+  -- scope for labels / comments).
+  gitea = { url = nil, token = nil, curl_cmd = "curl" },
 
   -- Default base branch for new PRs / when the remote default can't be detected.
   default_branch = "main",
@@ -17,8 +23,9 @@ M.defaults = {
   -- (it's mutable). Blobs are keyed by immutable commit shas → never stale.
   cache = { disk = false },
 
-  -- Dashboard sections (the :GG / :GitGood view). Each is a GitHub search query;
-  -- order = display order. Override to taste.
+  -- Dashboard sections (the :GG / :GitGood view). Each is a GitHub-style search
+  -- query; the Gitea provider translates is:/author:/assignee:/review-requested:
+  -- (with @me) and ignores the rest. Order = display order. Override to taste.
   sections = {
     { title = "Needs my review", search = "is:open review-requested:@me" },
     { title = "Authored by me", search = "is:open author:@me" },

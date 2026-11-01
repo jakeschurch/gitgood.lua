@@ -20,7 +20,7 @@ M.CONTRACT = {
   "merge_pr", -- (number, opts)
   "set_labels", -- (number, {add=?, remove=?})
   "set_reviewers", -- (number, {add=?, remove=?})
-  "mark_viewed", -- (pr_node_id, path) GitHub-synced viewed state
+  "mark_viewed", -- (pr_node_id, path) synced where the forge supports it, else session-local
   "unmark_viewed", -- (pr_node_id, path)
 }
 
@@ -50,6 +50,14 @@ end
 -- Built-in providers.
 M.register("github", function()
   return M.validate(require("gitgood.provider.github").new())
+end)
+
+-- Gitea, and API-compatible forks (Forgejo, Codeberg).
+M.register("gitea", function()
+  return M.validate(require("gitgood.provider.gitea").new())
+end)
+M.register("forgejo", function()
+  return M.validate(require("gitgood.provider.gitea").new())
 end)
 
 return M
